@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Transkrypcja ES · Archivo Patronato</title>
+<style>
+:root{--bg:#f6f3ec;--paper:#fffdf9;--ink:#1f2933;--muted:#52606d;--navy:#1b365d;--line:#e2ddd2;--accent:#8a5a2b}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.65 Georgia,"Times New Roman",serif}
+header{background:var(--navy);color:#fff;padding:14px 20px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
+header .title{font-weight:700;font-size:17px}
+header .actions{display:flex;gap:10px;align-items:center}
+header a{color:#fff;text-decoration:none;border:1px solid rgba(255,255,255,.35);padding:6px 12px;border-radius:6px;font:13px/1.2 system-ui,sans-serif}
+header a:hover{background:rgba(255,255,255,.12)}
+main{max-width:900px;margin:24px auto 60px;padding:0 16px}
+.sheet{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:28px 32px;box-shadow:0 2px 10px rgba(0,0,0,.04)}
+h1,h2,h3,h4{color:var(--navy);line-height:1.3;margin-top:1.35em}
+h1{font-size:24px;margin-top:0;border-bottom:1px solid var(--line);padding-bottom:10px}
+h2{font-size:19px;border-bottom:1px solid var(--line);padding-bottom:6px}
+h3{font-size:17px}
+p{margin:.75em 0}
+ul,ol{padding-left:1.5em}
+blockquote{margin:1em 0;padding:10px 16px;border-left:3px solid var(--accent);background:#fbf8f2;color:#334155}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13.5px;background:#f1ede4;padding:1px 5px;border-radius:4px}
+table{border-collapse:collapse;width:100%;margin:1em 0;font:14px/1.45 system-ui,sans-serif}
+th,td{border:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
+th{background:#f1ede4;color:var(--navy)}
+hr{border:0;border-top:1px solid var(--line);margin:1.5em 0}
+.err{color:#8c2323;background:#fbe6e6;border:1px solid #eab8b8;padding:14px 16px;border-radius:8px;font:14px system-ui,sans-serif}
+@media(max-width:700px){.sheet{padding:18px 16px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="title" id="hdr">Archivo Patronato · Transkrypcja ES</div>
+  <div class="actions">
+    <a id="rawlink" href="#" download>Pobierz .md</a>
+    <a id="backlink" href="index.html">← Powrót do biblioteki</a>
+  </div>
+</header>
+<main><article class="sheet" id="content"><p>Ładowanie dokumentu…</p></article></main>
+<script>
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function inlineMd(s) {
+  s = esc(s);
+  s = s.replace(/`([^`]+)`/g, '<code>$1</code>');
+  s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  s = s.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+  s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+  return s;
+}
+function renderMd(md) {
+  const lines = md.replace(/\r\n/g, '\n').split('\n');
+  let out = [], inList = false, inTable = false, tableRows = [];
+  const flushList = () => { if (inList) { out.push('</ul>'); inList = false; } };
+  const flushTable = () => {
+    if (!inTable) return;
+    let html = '<table><thead><tr>' + tableRows[0].map(c => `<th>${inlineMd(c)}</th>`).join('') + '</tr></thead><tbody>';
+    for (let i = 2; i < tableRows.length; i++) {
+      html += '<tr>' + tableRows[i].map(c => `<td>${inlineMd(c)}</td>`).join('') + '</tr>';
+    }
+    html += '</tbody></table>';
+    out.push(html);
+    inTable = false; tableRows = [];
+  };
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i];
+    if (/^\s*\|.*\|\s*$/.test(l)) {
+      flushList();
+      inTable = true;
+      tableRows.push(l.trim().slice(1, -1).split('|').map(c => c.trim()));
+      continue;
+    } else {
+      flushTable();
+    }
+    if (/^\s*---+\s*$/.test(l)) { flushList(); out.push('<hr>'); continue; }
+    const hm = l.match(/^(#{1,4})\s+(.*)$/);
+    if (hm) { flushList(); out.push(`<h${hm[1].length}>${inlineMd(hm[2])}</h${hm[1].length}>`); continue; }
+    const bq = l.match(/^>\s?(.*)$/);
+    if (bq) { flushList(); out.push(`<blockquote>${inlineMd(bq[1])}</blockquote>`); continue; }
+    const li = l.match(/^\s*[-*]\s+(.*)$/);
+    if (li) {
+      if (!inList) { out.push('<ul>'); inList = true; }
+      out.push(`<li>${inlineMd(li[1])}</li>`);
+      continue;
+    }
+    if (!l.trim()) { flushList(); continue; }
+    flushList();
+    out.push(`<p>${inlineMd(l)}</p>`);
+  }
+  flushList(); flushTable();
+  return out.join('\n');
+}
+
+(async function(){
+  const p = new URLSearchParams(location.search);
+  const src = p.get('src') || '';
+  const doc = p.get('doc') || '';
+  if (doc) {
+    document.getElementById('hdr').textContent = `${doc} · Archivo Patronato`;
+    document.getElementById('backlink').href = `index.html#doc/${encodeURIComponent(doc)}`;
+    document.title = `${doc} · Archivo Patronato`;
+  }
+  if (!/^assets\/(transcriptions|qa)\/[a-zA-Z0-9._-]+\.md$/.test(src) || src.includes('..')) {
+    document.getElementById('content').innerHTML = '<div class="err">Nieprawidłowa ścieżka pliku.</div>';
+    return;
+  }
+  document.getElementById('rawlink').href = src;
+  try {
+    const r = await fetch(src);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const text = await r.text();
+    document.getElementById('content').innerHTML = renderMd(text);
+  } catch (e) {
+    document.getElementById('content').innerHTML = `<div class="err">Nie udało się wczytać pliku (${esc(e.message)}).</div>`;
+  }
+})();
+</script>
+</body>
+</html>
